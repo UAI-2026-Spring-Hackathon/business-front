@@ -3,12 +3,30 @@ import { collection, onSnapshot, query, orderBy, limit, doc } from "firebase/fir
 import { db } from "../firebase/config";
 
 const DataContext = createContext();
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
+
+function formatDuration(seconds) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const hrs = String(Math.floor(safe / 3600)).padStart(2, "0");
+  const mins = String(Math.floor((safe % 3600) / 60)).padStart(2, "0");
+  const secs = String(safe % 60).padStart(2, "0");
+  return `${hrs}:${mins}:${secs}`;
+}
+
+function parseDateLike(value) {
+  if (!value) return null;
+  if (value?.toDate) return value.toDate();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 export function DataProvider({ children }) {
   const [teams, setTeams] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [settlement, setSettlement] = useState(null);
-  const [timeLeft, setTimeLeft] = useState("02:14:55");
+  const [timeLeft, setTimeLeft] = useState("00:00:00");
+  const [status, setStatus] = useState({ is_investment_open: false, investment_end_time_utc: null });
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
 
   useEffect(() => {
     const unsubTeams = onSnapshot(collection(db, "Teams"), (snap) => {
@@ -26,29 +44,16 @@ export function DataProvider({ children }) {
     const txQuery = query(
       collection(db, "Transactions"),
       orderBy("timestamp", "desc"),
-      limit(50) // Increased limit for dedicated ticker page
+      limit(500)
     );
     const unsubTx = onSnapshot(txQuery, (snap) => {
       const txData = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      if (txData.length === 0) {
-        setTransactions([
-          { id: "tx_mock_1", investor_society: "KU", coins: 5, target_team_id: "team_01", multiplier: 1.0, timestamp: new Date() },
-          { id: "tx_mock_2", investor_society: "YU", coins: 10, target_team_id: "team_02", multiplier: 1.2, timestamp: new Date(Date.now() - 60000) },
-          { id: "tx_mock_3", investor_society: "KU", coins: 2, target_team_id: "team_02", multiplier: 1.2, timestamp: new Date(Date.now() - 120000) },
-          { id: "tx_mock_4", investor_society: "YU", coins: 7, target_team_id: "team_03", multiplier: 1.0, timestamp: new Date(Date.now() - 180000) },
-          { id: "tx_mock_5", investor_society: "KU", coins: 15, target_team_id: "team_01", multiplier: 1.0, timestamp: new Date(Date.now() - 240000) },
-        ]);
-      } else {
-        setTransactions(txData);
-      }
+      setTransactions(txData);
     });
 
     const unsubConfig = onSnapshot(doc(db, "SystemConfig", "status"), (snap) => {
       if (snap.exists()) {
-        const config = snap.data();
-        if (config.is_investment_open === false) {
-          setTimeLeft("HALTED");
-        }
+        setStatus(snap.data());
       }
     });
 
@@ -59,6 +64,55 @@ export function DataProvider({ children }) {
       unsubConfig();
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const syncServerClock = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/status`);
+        const data = await res.json();
+        const serverNow = parseDateLike(data.server_time_utc);
+        if (mounted && serverNow) {
+          setServerOffsetMs(serverNow.getTime() - Date.now());
+        }
+      } catch (e) {
+        // Keep last known offset if network is unstable.
+      }
+    };
+
+    syncServerClock();
+    const timer = setInterval(syncServerClock, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateTimeLeft = () => {
+      if (!status?.is_investment_open) {
+        setTimeLeft("HALTED");
+        return;
+      }
+
+      const endTime = parseDateLike(status.investment_end_time_utc);
+      if (!endTime) {
+        setTimeLeft("00:00:00");
+        return;
+      }
+
+      const remainingMs = endTime.getTime() - (Date.now() + serverOffsetMs);
+      if (remainingMs <= 0) {
+        setTimeLeft("00:00:00");
+        return;
+      }
+      setTimeLeft(formatDuration(remainingMs / 1000));
+    };
+
+    updateTimeLeft();
+    const timer = setInterval(updateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [status, serverOffsetMs]);
 
   const totalVolume = teams.reduce((sum, t) => sum + (t.total_invested_coins || 0), 0);
 

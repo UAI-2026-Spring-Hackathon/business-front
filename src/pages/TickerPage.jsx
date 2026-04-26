@@ -17,11 +17,11 @@ export default function TickerPage() {
   }, [transactions, filter, search]);
 
   const stats = useMemo(() => {
-    const totalCount = filteredTransactions.length;
-    const maxTrade = totalCount > 0 ? Math.max(...filteredTransactions.map(t => t.coins)) : 0;
+    const totalCount = transactions.length;
+    const maxTrade = filteredTransactions.length > 0 ? Math.max(...filteredTransactions.map(t => t.coins)) : 0;
     const kuVolume = transactions.filter(t => t.investor_society === 'KU').reduce((sum, t) => sum + t.coins, 0);
     const yuVolume = transactions.filter(t => t.investor_society === 'YU').reduce((sum, t) => sum + t.coins, 0);
-    
+
     return { totalCount, maxTrade, kuVolume, yuVolume };
   }, [filteredTransactions, transactions]);
 

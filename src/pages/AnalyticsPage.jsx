@@ -24,39 +24,41 @@ export default function AnalyticsPage() {
 
   return (
     <Layout totalVolume={totalVolume} timeLeft={timeLeft}>
-      <div className="p-8 max-w-6xl mx-auto space-y-12 animate-fade-in">
+      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div>
-            <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Statistical Analysis</div>
-            <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">Market Intelligence</h1>
-            <p className="text-zinc-500 text-xs font-bold mt-2 uppercase tracking-widest">Comparative valuation metrics & strategic weight analysis</p>
+            <div className="text-[9px] md:text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Statistical Analysis</div>
+            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase italic">Market Intelligence</h1>
+            <p className="text-zinc-500 text-[10px] md:text-xs font-bold mt-2 uppercase tracking-widest">Comparative valuation metrics & strategic weight analysis</p>
           </div>
 
           {analytics && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              <div className="bg-zinc-950 border border-zinc-800 p-4 min-w-[140px]">
-                <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">TOTAL STRATEGIC BONUS</div>
-                <div className="text-xl font-black text-green-500 tracking-tighter">+{analytics.totalBonus.toLocaleString()}</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              <div className="bg-zinc-950 border border-zinc-800 p-4 min-w-[120px] md:min-w-[140px]">
+                <div className="text-[8px] md:text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">TOTAL BONUS</div>
+                <div className="text-lg md:text-xl font-black text-green-500 tracking-tighter">+{analytics.totalBonus.toLocaleString()}</div>
               </div>
-              <div className="bg-zinc-950 border border-zinc-800 p-4 min-w-[140px]">
-                <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">AVG STRATEGIC INDEX</div>
-                <div className="text-xl font-black text-blue-500 tracking-tighter">{analytics.avgIndex.toFixed(3)}x</div>
+              <div className="bg-zinc-950 border border-zinc-800 p-4 min-w-[120px] md:min-w-[140px]">
+                <div className="text-[8px] md:text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">AVG STRAT INDEX</div>
+                <div className="text-lg md:text-xl font-black text-blue-500 tracking-tighter">{analytics.avgIndex.toFixed(3)}x</div>
               </div>
-              <div className="bg-blue-600 p-4 min-w-[140px] hidden md:block">
-                <div className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">MOST STRATEGIC ENTITY</div>
-                <div className="text-lg font-black text-white tracking-tighter uppercase truncate">{analytics.mostStrategic.name}</div>
+              <div className="bg-blue-600 p-4 min-w-[120px] md:min-w-[140px] col-span-2 md:col-span-1">
+                <div className="text-[8px] md:text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">MOST STRATEGIC</div>
+                <div className="text-base md:text-lg font-black text-white tracking-tighter uppercase truncate">{analytics.mostStrategic.name}</div>
               </div>
             </div>
           )}
         </header>
 
-        <div className="bg-zinc-950 border border-zinc-800 p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        <div className="bg-zinc-950 border border-zinc-800 p-4 md:p-12 shadow-2xl relative overflow-hidden">
           {/* Decorative background scanline */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,24,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.02),rgba(0,0,255,0.02))] bg-[length:100%_4px,3px_100%] pointer-events-none"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,24,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.02),rgba(0,255,0,0.02),rgba(0,255,0,0.02))] bg-[length:100%_4px,3px_100%] pointer-events-none"></div>
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 blur-[100px] rounded-full -mr-48 -mt-48 pointer-events-none"></div>
           
-          <div className="relative z-10">
-            <ValuationChart teams={teams} />
+          <div className="relative z-10 overflow-x-auto">
+            <div className="min-w-[600px] md:min-w-0">
+              <ValuationChart teams={teams} />
+            </div>
           </div>
         </div>
 

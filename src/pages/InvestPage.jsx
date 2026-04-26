@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase/config";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
 
 export default function InvestPage() {
   const [searchParams] = useSearchParams();
@@ -54,6 +54,13 @@ export default function InvestPage() {
   const isOpposing = user && selectedTeam && user.society !== selectedTeam.society;
   const multiplier = isOpposing ? 1.2 : 1.0;
   const projectedValIncrease = investAmount * multiplier * 10000000;
+
+  const clampInvestAmount = (value) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 1;
+    const integer = Math.floor(parsed);
+    return Math.min(Math.max(integer, 1), user?.balance || 1);
+  };
 
   // Actions
   async function handleLogin(e) {
@@ -115,6 +122,17 @@ export default function InvestPage() {
     if (user?.isDemo) {
       setTimeout(() => {
         setUser(prev => ({ ...prev, balance: prev.balance - investAmount }));
+        setTeams(prev =>
+          prev.map(team =>
+            team.id === teamId
+              ? {
+                  ...team,
+                  total_invested_coins: (team.total_invested_coins || 0) + investAmount,
+                  weighted_valuation: (team.weighted_valuation || 0) + investAmount * multiplier,
+                }
+              : team
+          )
+        );
         setStatus({ ok: true, message: `DEMO: TRADE EXECUTED` });
         setTimeout(() => {
           setIsDrawerOpen(false);
@@ -141,6 +159,17 @@ export default function InvestPage() {
         setStatus({ ok: false, message: data.detail || "ERROR" });
       } else {
         setUser(prev => ({ ...prev, balance: data.remaining_balance }));
+        setTeams(prev =>
+          prev.map(team =>
+            team.id === teamId
+              ? {
+                  ...team,
+                  total_invested_coins: (team.total_invested_coins || 0) + investAmount,
+                  weighted_valuation: (team.weighted_valuation || 0) + investAmount * multiplier,
+                }
+              : team
+          )
+        );
         setStatus({ ok: true, message: `TRADE EXECUTED` });
         setTimeout(() => {
           setIsDrawerOpen(false);
@@ -229,16 +258,16 @@ export default function InvestPage() {
             </div>
           </div>
         ) : (
-          <div className="p-6 animate-fade-in pb-32 max-w-lg mx-auto">
+          <div className="p-4 md:p-6 animate-fade-in pb-32 max-w-lg mx-auto">
             <section className="mb-12">
-              <div className="text-[10px] font-black text-zinc-500 tracking-[0.4em] uppercase mb-2">District Asset</div>
-              <h1 className="text-5xl font-black tracking-tighter uppercase mb-8 leading-none">{selectedTeam.name}</h1>
+              <div className="text-[9px] md:text-[10px] font-black text-zinc-500 tracking-[0.4em] uppercase mb-2">District Asset</div>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase mb-8 leading-none break-words">{selectedTeam.name}</h1>
               
               <div className="grid grid-cols-2 gap-4 mb-12">
                 <div className="bg-zinc-900/50 p-4 border border-zinc-800">
                   <div className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">MARKET VALUE</div>
                   <div className="text-xl font-black font-mono tracking-tighter text-white uppercase">
-                    ₩ {(selectedTeam.weighted_valuation * 10000).toLocaleString()}
+                    ₩ {(selectedTeam.weighted_valuation * 10000000).toLocaleString()}
                   </div>
                 </div>
                 <div className="bg-zinc-900/50 p-4 border border-zinc-800">
@@ -257,9 +286,9 @@ export default function InvestPage() {
                      <span className="text-[10px] font-black text-blue-500 uppercase">Strategic Focus</span>
                    </div>
                    <div className="h-2 w-full bg-zinc-800 flex overflow-hidden">
-                     <div 
-                      className={`${selectedTeam.society === 'KU' ? 'bg-red-600' : 'bg-blue-600'} h-full transition-all duration-1000`} 
-                      style={{ width: `${Math.min(100, (selectedTeam.weighted_valuation / 20000) * 100)}%` }}
+                     <div
+                      className={`${selectedTeam.society === 'KU' ? 'bg-red-600' : 'bg-blue-600'} h-full transition-all duration-1000`}
+                      style={{ width: `${Math.min(100, (selectedTeam.weighted_valuation / 120) * 100)}%` }}
                      ></div>
                    </div>
                    <div className="flex justify-between mt-2 text-[8px] font-black text-zinc-700 uppercase tracking-widest">
@@ -311,9 +340,9 @@ export default function InvestPage() {
             <div className="w-12 h-1 bg-zinc-900 rounded-full mx-auto -mt-6 mb-6"></div>
             <header className="flex justify-between items-end">
               <div>
-                <div className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-2">ALLOCATION</div>
-                <div className="text-5xl font-black font-mono tracking-tighter text-white">
-                  {investAmount}<span className="text-lg text-zinc-800 ml-2">COINS</span>
+                <div className="text-[9px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1 md:mb-2">ALLOCATION</div>
+                <div className="text-3xl md:text-5xl font-black font-mono tracking-tighter text-white">
+                  {investAmount}<span className="text-sm md:text-lg text-zinc-800 ml-2">COINS</span>
                 </div>
               </div>
               <div className="text-right">
@@ -322,9 +351,24 @@ export default function InvestPage() {
               </div>
             </header>
             <div className="grid grid-cols-3 gap-px bg-zinc-800 border border-zinc-800">
-              <button onClick={() => setInvestAmount(prev => prev + 1)} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">+1</button>
-              <button onClick={() => setInvestAmount(prev => prev + 5)} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">+5</button>
+              <button onClick={() => setInvestAmount(prev => clampInvestAmount(prev - 1))} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">-1</button>
+              <button onClick={() => setInvestAmount(prev => clampInvestAmount(prev - 5))} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">-5</button>
               <button onClick={() => setInvestAmount(user.balance)} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">MAX</button>
+            </div>
+            <div className="bg-zinc-900/50 border border-zinc-800 p-4 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-black tracking-widest uppercase text-zinc-500">Custom Coins</span>
+              <input
+                type="number"
+                min={1}
+                max={user.balance}
+                value={investAmount}
+                onChange={(e) => setInvestAmount(clampInvestAmount(e.target.value))}
+                className="w-28 bg-black border border-zinc-700 text-right py-2 px-3 text-sm font-black font-mono tracking-wider focus:outline-none focus:border-blue-600"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-px bg-zinc-800 border border-zinc-800">
+              <button onClick={() => setInvestAmount(prev => clampInvestAmount(prev + 1))} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">+1</button>
+              <button onClick={() => setInvestAmount(prev => clampInvestAmount(prev + 5))} className="bg-black py-5 font-black text-xs active:bg-zinc-900 transition-colors">+5</button>
             </div>
             <div className="space-y-4">
               {status ? (
@@ -366,18 +410,18 @@ function TeamCard({ team, index, total, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className={`${bgColor} min-w-[300px] max-w-[300px] h-[520px] rounded-[40px] p-10 flex flex-col justify-between relative cursor-pointer transform transition-all duration-500 active:scale-95 group z-10 shadow-none`}
+      className={`${bgColor} min-w-[280px] sm:min-w-[300px] max-w-[85vw] sm:max-w-[300px] h-[480px] sm:h-[520px] rounded-[30px] sm:rounded-[40px] p-8 sm:p-10 flex flex-col justify-between relative cursor-pointer transform transition-all duration-500 active:scale-95 group z-10 shadow-none`}
     >
       <div className="relative z-10">
-        <div className="text-[10px] font-black text-white/50 tracking-[0.4em] uppercase mb-4">District {index + 1}</div>
-        <h2 className="text-4xl font-black text-white tracking-tighter uppercase leading-tight mb-6 break-words">{team.name}</h2>
+        <div className="text-[9px] md:text-[10px] font-black text-white/50 tracking-[0.4em] uppercase mb-4">District {index + 1}</div>
+        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter uppercase leading-tight mb-6 break-words">{team.name}</h2>
         <div className="w-10 h-1 bg-white/20 mb-8 group-hover:w-20 transition-all duration-500"></div>
         
         {/* Real-time Stats on Card */}
         <div className="space-y-6">
           <div className="flex flex-col">
             <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Market Cap</span>
-            <span className="text-2xl font-black text-white font-mono tracking-tighter italic">₩ {(team.weighted_valuation * 10000).toLocaleString()}</span>
+            <span className="text-2xl font-black text-white font-mono tracking-tighter italic">₩ {(team.weighted_valuation * 10000000).toLocaleString()}</span>
           </div>
 
           {/* Stock Style Trend Chart */}

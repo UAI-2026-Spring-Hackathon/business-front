@@ -56,8 +56,8 @@ export default function ResultsPage() {
         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
       </div>
 
-      <div className="relative z-10 min-h-screen flex flex-col p-12">
-        <header className="flex justify-between items-center mb-20 animate-fade-in">
+      <div className="relative z-10 min-h-screen flex flex-col p-6 md:p-12">
+        <header className="flex justify-between items-center mb-10 md:mb-20 animate-fade-in">
           <div>
             <div className="text-[10px] font-black text-blue-500 tracking-[0.5em] uppercase mb-2">Final Settlement Report</div>
             <h2 className="text-xl font-black italic tracking-tighter uppercase">Ceremony Phase</h2>
@@ -71,21 +71,21 @@ export default function ResultsPage() {
         <main className="flex-1 flex flex-col items-center justify-center">
           {/* Winner Section */}
           <div className={`transition-all duration-1000 transform ${showWinner ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="text-center mb-8">
-              <span className="inline-block px-4 py-1 bg-blue-600 text-[10px] font-black tracking-[0.5em] uppercase italic mb-6">The Unicorn</span>
-              <h1 className="text-[120px] leading-none font-black tracking-tighter uppercase italic text-white drop-shadow-[0_0_50px_rgba(37,99,235,0.4)]">
+            <div className="text-center mb-8 px-4">
+              <span className="inline-block px-4 py-1 bg-blue-600 text-[8px] md:text-[10px] font-black tracking-[0.5em] uppercase italic mb-6">The Unicorn</span>
+              <h1 className="text-5xl sm:text-7xl md:text-[120px] leading-none font-black tracking-tighter uppercase italic text-white drop-shadow-[0_0_50px_rgba(37,99,235,0.4)] break-words">
                 {winner?.team_name}
               </h1>
             </div>
 
-            <div className="flex justify-center space-x-20 mt-12">
+            <div className="flex flex-col md:flex-row justify-center items-center space-y-8 md:space-y-0 md:space-x-20 mt-12">
               <div className="text-center">
-                <div className="text-[10px] font-black text-zinc-600 tracking-widest uppercase mb-2">Final Composite Score</div>
-                <div className="text-6xl font-black text-white font-mono">{winner?.total_score}</div>
+                <div className="text-[9px] md:text-[10px] font-black text-zinc-600 tracking-widest uppercase mb-2">Final Composite Score</div>
+                <div className="text-4xl md:text-6xl font-black text-white font-mono">{winner?.total_score}</div>
               </div>
               <div className="text-center">
-                <div className="text-[10px] font-black text-zinc-600 tracking-widest uppercase mb-2">Market Capitalization</div>
-                <div className="text-6xl font-black text-white font-mono italic">₩ {(winner?.weighted_valuation * 10000).toLocaleString()}</div>
+                <div className="text-[9px] md:text-[10px] font-black text-zinc-600 tracking-widest uppercase mb-2">Market Capitalization</div>
+                <div className="text-4xl md:text-6xl font-black text-white font-mono italic">₩ {(winner?.weighted_valuation * 10000).toLocaleString()}</div>
               </div>
             </div>
           </div>
@@ -106,12 +106,12 @@ export default function ResultsPage() {
           </div>
         </main>
 
-        <footer className="mt-20 flex justify-between items-end border-t border-zinc-900 pt-8 animate-fade-in">
-          <div className="text-[10px] font-black text-zinc-700 tracking-[0.3em] uppercase">Strategic Ops / Final Results</div>
-          <div className="space-x-12">
+        <footer className="mt-20 flex flex-col md:flex-row justify-between items-center md:items-end border-t border-zinc-900 pt-8 gap-8 animate-fade-in">
+          <div className="text-[9px] font-black text-zinc-700 tracking-[0.3em] uppercase order-2 md:order-1">KU vs YU AI Hackathon © 2026</div>
+          <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-12 order-1 md:order-2 w-full md:w-auto">
             <button 
               onClick={() => window.location.href = '/raffle'}
-              className="text-[10px] font-black text-green-500 hover:text-white transition-colors tracking-widest uppercase border border-green-500/30 px-6 py-3"
+              className="w-full sm:w-auto text-[10px] font-black text-green-500 hover:text-white transition-colors tracking-widest uppercase border border-green-500/30 px-6 py-4 md:py-3"
             >
               Go to Lucky Draw →
             </button>

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase/config";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
 
 export default function JudgePage() {
   const [searchParams] = useSearchParams();
@@ -20,12 +20,10 @@ export default function JudgePage() {
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setTeams(data);
-      if (data.length > 0 && !selectedTeam) {
-        setSelectedTeam(data[0].id);
-      }
+      setSelectedTeam(prev => (prev || (data.length > 0 ? data[0].id : "")));
     });
     return unsub;
-  }, [selectedTeam]);
+  }, []);
 
   if (!judgeId) {
     return (
