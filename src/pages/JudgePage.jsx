@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -14,6 +14,8 @@ export default function JudgePage() {
   const [scores, setScores] = useState({ ai_moat: 0, bm_validity: 0, demo_completeness: 0 });
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [teamSearch, setTeamSearch] = useState("");
 
   useEffect(() => {
     const q = query(collection(db, "Teams"), orderBy("name"));
@@ -73,6 +75,26 @@ export default function JudgePage() {
   }
 
   const total = scores.ai_moat + scores.bm_validity + scores.demo_completeness;
+  const selectedTeamObj = useMemo(
+    () => teams.find((t) => t.id === selectedTeam),
+    [teams, selectedTeam]
+  );
+  const filteredTeams = useMemo(() => {
+    const q = teamSearch.trim().toLowerCase();
+    if (!q) return teams;
+    return teams.filter(
+      (t) =>
+        (t.name || "").toLowerCase().includes(q) ||
+        (t.id || "").toLowerCase().includes(q) ||
+        (t.society || "").toLowerCase().includes(q)
+    );
+  }, [teams, teamSearch]);
+
+  function handleSelectTeam(teamId) {
+    setSelectedTeam(teamId);
+    setIsTeamModalOpen(false);
+    setTeamSearch("");
+  }
 
   return (
     <div className="min-h-screen bg-[#0f0d13] flex flex-col items-center justify-center p-6 font-['Inter']">
@@ -93,17 +115,25 @@ export default function JudgePage() {
         <form onSubmit={handleSubmit} className="relative z-10 space-y-10">
           <div>
             <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Target Entity for Evaluation</label>
-            <select
-              className="w-full bg-zinc-900 border border-zinc-800 text-white px-4 py-4 text-sm font-bold focus:outline-none focus:border-blue-600 transition-colors appearance-none"
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
+            <button
+              type="button"
+              onClick={() => setIsTeamModalOpen(true)}
+              className="w-full bg-zinc-900 border border-zinc-800 text-white px-4 py-4 text-left text-sm font-bold focus:outline-none focus:border-blue-600 transition-colors hover:border-zinc-700"
             >
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name || t.id} ({t.society || '?'})
-                </option>
-              ))}
-            </select>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-white truncate">
+                    {selectedTeamObj ? `${selectedTeamObj.name || selectedTeamObj.id}` : "Select a team"}
+                  </div>
+                  {selectedTeamObj && (
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1">
+                      {selectedTeamObj.id} · {selectedTeamObj.society || "?"}
+                    </div>
+                  )}
+                </div>
+                <span className="material-symbols-outlined text-zinc-400">expand_more</span>
+              </div>
+            </button>
           </div>
 
           <div className="space-y-8">
@@ -150,6 +180,71 @@ export default function JudgePage() {
           </div>
         )}
       </div>
+
+      {isTeamModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 shadow-2xl">
+            <div className="p-5 border-b border-zinc-900 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Target Entity</div>
+                <h2 className="text-lg font-black text-white tracking-tight">Select Team</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTeamModalOpen(false);
+                  setTeamSearch("");
+                }}
+                className="w-9 h-9 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 border-b border-zinc-900">
+              <input
+                autoFocus
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+                placeholder="Search by name / id / society"
+                className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div className="max-h-[380px] overflow-y-auto">
+              {filteredTeams.length === 0 ? (
+                <div className="p-10 text-center text-zinc-500 text-sm">No teams found.</div>
+              ) : (
+                filteredTeams.map((team) => {
+                  const isSelected = team.id === selectedTeam;
+                  return (
+                    <button
+                      key={team.id}
+                      type="button"
+                      onClick={() => handleSelectTeam(team.id)}
+                      className={`w-full text-left p-4 border-b border-zinc-900 hover:bg-zinc-900/70 transition-colors ${
+                        isSelected ? "bg-blue-600/10" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-white font-bold truncate">{team.name || team.id}</div>
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1">
+                            {team.id} · {team.society || "?"}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Selected</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

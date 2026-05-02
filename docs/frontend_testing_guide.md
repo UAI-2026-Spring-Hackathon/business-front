@@ -30,6 +30,19 @@
 
 ---
 
+## 2-1. 심사위원 페이지 (Judge Page)
+심사위원이 팀별 점수를 입력하는 전용 페이지입니다.
+
+*   **접속 경로**: `/judge?id=judge_01`
+*   **추가 예시**:
+    *   `/judge?id=judge_02`
+    *   `/judge?id=judge_03`
+*   **주요 기능 테스트**:
+    *   팀 선택 후 AI Moat / BM Validity / Demo Completeness 점수 입력이 정상 동작하는지 확인.
+    *   제출 후 점수 저장 성공 메시지가 표시되는지 확인.
+
+---
+
 ## 3. 결과 발표 페이지 (Final Results)
 행사의 하이라이트로, 최종 우승팀(The Unicorn)을 선포하는 시네마틱 페이지입니다.
 

@@ -27,7 +27,7 @@ export default function Layout({ children, totalVolume, timeLeft, onRunSettlemen
             <span className="material-symbols-outlined text-2xl">menu</span>
           </button>
           <div className="text-sm md:text-lg font-black tracking-widest text-zinc-50 cursor-pointer truncate max-w-[180px] md:max-w-none" onClick={() => navigate('/dashboard')}>
-            <span className="hidden sm:inline">2-UNIVERSITY LIVE FUNDING DASHBOARD</span>
+            <span className="hidden sm:inline">KU/YU Live Funding System</span>
             <span className="sm:hidden text-blue-500">LIVE DASHBOARD</span>
           </div>
         </div>

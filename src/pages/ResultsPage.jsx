@@ -15,6 +15,11 @@ export default function ResultsPage() {
     if (isDemo) {
       setSettlement({
         winner_team_id: "team_demo",
+        winner_society: "KU",
+        society_summary: {
+          KU: { total_invested_coins: 65, weighted_valuation: 24000, total_score: 177.4 },
+          YU: { total_invested_coins: 35, weighted_valuation: 12000, total_score: 85.2 },
+        },
         rankings: [
           { team_id: "team_demo", team_name: "Project Antonio", total_score: 98.5, weighted_valuation: 15000 },
           { team_id: "team_02", team_name: "Nexus Dynamics", total_score: 85.2, weighted_valuation: 12000 },
@@ -47,6 +52,18 @@ export default function ResultsPage() {
   }
 
   const winner = settlement.rankings?.[0];
+  const societySummary = settlement.society_summary || {
+    KU: { total_invested_coins: 0, weighted_valuation: 0, total_score: 0 },
+    YU: { total_invested_coins: 0, weighted_valuation: 0, total_score: 0 },
+  };
+  const winnerSocietyLabel =
+    settlement.winner_society === "TIE"
+      ? "TIE"
+      : settlement.winner_society === "KU"
+        ? "KOREA UNIVERSITY"
+        : settlement.winner_society === "YU"
+          ? "YONSEI UNIVERSITY"
+          : "N/A";
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-['Inter'] overflow-hidden selection:bg-blue-600">
@@ -86,6 +103,27 @@ export default function ResultsPage() {
               <div className="text-center">
                 <div className="text-[9px] md:text-[10px] font-black text-zinc-600 tracking-widest uppercase mb-2">Market Capitalization</div>
                 <div className="text-4xl md:text-6xl font-black text-white font-mono italic">₩ {(winner?.weighted_valuation * 10000).toLocaleString()}</div>
+              </div>
+            </div>
+
+            <div className="mt-10 border border-zinc-900 bg-[#0a0a0a]">
+              <div className="p-4 border-b border-zinc-900 flex justify-between items-center">
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em]">Society Battle Result</span>
+                <span className="text-xs font-black text-blue-500 uppercase tracking-widest">{winnerSocietyLabel}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-zinc-900">
+                <div className="bg-black p-5">
+                  <div className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-3">KU</div>
+                  <div className="text-sm font-bold text-zinc-300">Invested Coins: <span className="text-white">{societySummary.KU.total_invested_coins}</span></div>
+                  <div className="text-sm font-bold text-zinc-300">Valuation: <span className="text-white">{societySummary.KU.weighted_valuation}</span></div>
+                  <div className="text-sm font-bold text-zinc-300">Total Score: <span className="text-white">{societySummary.KU.total_score}</span></div>
+                </div>
+                <div className="bg-black p-5">
+                  <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">YU</div>
+                  <div className="text-sm font-bold text-zinc-300">Invested Coins: <span className="text-white">{societySummary.YU.total_invested_coins}</span></div>
+                  <div className="text-sm font-bold text-zinc-300">Valuation: <span className="text-white">{societySummary.YU.weighted_valuation}</span></div>
+                  <div className="text-sm font-bold text-zinc-300">Total Score: <span className="text-white">{societySummary.YU.total_score}</span></div>
+                </div>
               </div>
             </div>
           </div>
