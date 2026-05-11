@@ -17,8 +17,24 @@ export default function ResultsPage() {
         winner_team_id: "team_demo",
         winner_society: "KU",
         society_summary: {
-          KU: { total_invested_coins: 65, weighted_valuation: 24000, total_score: 177.4 },
-          YU: { total_invested_coins: 35, weighted_valuation: 12000, total_score: 85.2 },
+          KU: {
+            total_invested_coins: 65,
+            weighted_valuation: 24000,
+            total_score: 177.4,
+            team_count: 4,
+            avg_invested_coins: 16.25,
+            avg_weighted_valuation: 6000,
+            avg_total_score: 44.35,
+          },
+          YU: {
+            total_invested_coins: 35,
+            weighted_valuation: 12000,
+            total_score: 85.2,
+            team_count: 6,
+            avg_invested_coins: 5.83,
+            avg_weighted_valuation: 2000,
+            avg_total_score: 14.2,
+          },
         },
         rankings: [
           { team_id: "team_demo", team_name: "Project Antonio", total_score: 98.5, weighted_valuation: 15000 },
@@ -52,9 +68,18 @@ export default function ResultsPage() {
   }
 
   const winner = settlement.rankings?.[0];
-  const societySummary = settlement.society_summary || {
-    KU: { total_invested_coins: 0, weighted_valuation: 0, total_score: 0 },
-    YU: { total_invested_coins: 0, weighted_valuation: 0, total_score: 0 },
+  const emptyStats = {
+    total_invested_coins: 0,
+    weighted_valuation: 0,
+    total_score: 0,
+    team_count: 0,
+    avg_invested_coins: 0,
+    avg_weighted_valuation: 0,
+    avg_total_score: 0,
+  };
+  const societySummary = {
+    KU: { ...emptyStats, ...(settlement.society_summary?.KU || {}) },
+    YU: { ...emptyStats, ...(settlement.society_summary?.YU || {}) },
   };
   const winnerSocietyLabel =
     settlement.winner_society === "TIE"
@@ -113,17 +138,38 @@ export default function ResultsPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-zinc-900">
                 <div className="bg-black p-5">
-                  <div className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-3">KU</div>
-                  <div className="text-sm font-bold text-zinc-300">Invested Coins: <span className="text-white">{societySummary.KU.total_invested_coins}</span></div>
-                  <div className="text-sm font-bold text-zinc-300">Valuation: <span className="text-white">{societySummary.KU.weighted_valuation}</span></div>
+                  <div className="flex justify-between items-baseline mb-3">
+                    <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">KU</div>
+                    <div className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">
+                      {societySummary.KU.team_count} TEAMS
+                    </div>
+                  </div>
+                  <div className="text-sm font-bold text-zinc-300">Invested Coins: <span className="text-white">{societySummary.KU.total_invested_coins}</span> <span className="text-zinc-500 text-xs">(avg {societySummary.KU.avg_invested_coins})</span></div>
+                  <div className="text-sm font-bold text-zinc-300">Valuation: <span className="text-white">{societySummary.KU.weighted_valuation}</span> <span className="text-zinc-500 text-xs">(avg {societySummary.KU.avg_weighted_valuation})</span></div>
                   <div className="text-sm font-bold text-zinc-300">Total Score: <span className="text-white">{societySummary.KU.total_score}</span></div>
+                  <div className="text-sm font-bold text-zinc-300 mt-1 pt-1 border-t border-zinc-900">
+                    <span className="text-[9px] text-amber-500 tracking-widest uppercase">★ Avg Score</span>
+                    <span className="text-white ml-2">{societySummary.KU.avg_total_score}</span>
+                  </div>
                 </div>
                 <div className="bg-black p-5">
-                  <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">YU</div>
-                  <div className="text-sm font-bold text-zinc-300">Invested Coins: <span className="text-white">{societySummary.YU.total_invested_coins}</span></div>
-                  <div className="text-sm font-bold text-zinc-300">Valuation: <span className="text-white">{societySummary.YU.weighted_valuation}</span></div>
+                  <div className="flex justify-between items-baseline mb-3">
+                    <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">YU</div>
+                    <div className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">
+                      {societySummary.YU.team_count} TEAMS
+                    </div>
+                  </div>
+                  <div className="text-sm font-bold text-zinc-300">Invested Coins: <span className="text-white">{societySummary.YU.total_invested_coins}</span> <span className="text-zinc-500 text-xs">(avg {societySummary.YU.avg_invested_coins})</span></div>
+                  <div className="text-sm font-bold text-zinc-300">Valuation: <span className="text-white">{societySummary.YU.weighted_valuation}</span> <span className="text-zinc-500 text-xs">(avg {societySummary.YU.avg_weighted_valuation})</span></div>
                   <div className="text-sm font-bold text-zinc-300">Total Score: <span className="text-white">{societySummary.YU.total_score}</span></div>
+                  <div className="text-sm font-bold text-zinc-300 mt-1 pt-1 border-t border-zinc-900">
+                    <span className="text-[9px] text-amber-500 tracking-widest uppercase">★ Avg Score</span>
+                    <span className="text-white ml-2">{societySummary.YU.avg_total_score}</span>
+                  </div>
                 </div>
+              </div>
+              <div className="px-4 py-2 text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] italic border-t border-zinc-900">
+                Winner determined by team-averaged score
               </div>
             </div>
           </div>
