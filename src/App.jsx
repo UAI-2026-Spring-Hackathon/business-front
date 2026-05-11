@@ -8,6 +8,7 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminPage from "./pages/AdminPage";
 import ResultsPage from "./pages/ResultsPage";
 import RafflePage from "./pages/RafflePage";
+import TechRafflePage from "./pages/TechRafflePage";
 import { DataProvider } from "./context/DataContext";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/raffle" element={<RafflePage />} />
+          <Route path="/tech-raffle" element={<TechRafflePage />} />
           <Route path="/judge" element={<JudgePage />} />
           <Route path="*" element={<Dashboard />} />
         </Routes>
