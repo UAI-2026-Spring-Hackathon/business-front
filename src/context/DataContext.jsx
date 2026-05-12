@@ -38,6 +38,9 @@ export function DataProvider({ children }) {
     const unsubSettlement = onSnapshot(doc(db, "Settlement_Results", "latest"), (snap) => {
       if (snap.exists()) {
         setSettlement(snap.data());
+      } else {
+        // Clear stale settlement UI when reset deletes Settlement_Results/latest.
+        setSettlement(null);
       }
     });
 

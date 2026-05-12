@@ -55,11 +55,12 @@ export default function InvestPage() {
   const multiplier = isOpposing ? 1.2 : 1.0;
   const projectedValIncrease = investAmount * multiplier * 10000000;
 
-  const clampInvestAmount = (value) => {
+  const clampInvestAmount = (value, { enforceMax = true, enforceMin = true } = {}) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return 1;
     const integer = Math.floor(parsed);
-    return Math.min(Math.max(integer, 1), user?.balance || 1);
+    const minBounded = enforceMin ? Math.max(integer, 1) : integer;
+    return enforceMax ? Math.min(minBounded, user?.balance || 1) : minBounded;
   };
 
   // Actions
@@ -103,6 +104,8 @@ export default function InvestPage() {
 
   async function handleInvest() {
     if (loading) return;
+    const normalizedAmount = clampInvestAmount(investAmount);
+    setInvestAmount(normalizedAmount);
     
     // Check if investment is open
     try {
@@ -151,7 +154,7 @@ export default function InvestPage() {
         body: JSON.stringify({
           investor_pin: user.pin,
           target_team_id: teamId,
-          coins: Number(investAmount),
+          coins: Number(normalizedAmount),
         }),
       });
       const data = await res.json();
@@ -164,8 +167,8 @@ export default function InvestPage() {
             team.id === teamId
               ? {
                   ...team,
-                  total_invested_coins: (team.total_invested_coins || 0) + investAmount,
-                  weighted_valuation: (team.weighted_valuation || 0) + investAmount * multiplier,
+                  total_invested_coins: (team.total_invested_coins || 0) + normalizedAmount,
+                  weighted_valuation: (team.weighted_valuation || 0) + normalizedAmount * multiplier,
                 }
               : team
           )
@@ -235,9 +238,9 @@ export default function InvestPage() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 relative overflow-visible">
+      <main className="flex-1 min-h-0 relative overflow-y-auto overflow-x-hidden">
         {!selectedTeam ? (
-          <div className="h-full flex flex-col p-6 space-y-6 overflow-visible pt-20">
+          <div className="h-full min-h-0 flex flex-col p-6 space-y-6 pt-20">
             <div className="flex justify-between items-end px-4">
               <div>
                 <h1 className="text-4xl font-black tracking-tighter uppercase italic leading-none">Discover</h1>
@@ -245,7 +248,7 @@ export default function InvestPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto no-scrollbar flex items-center space-x-8 px-8 -mx-6 pb-24 overflow-visible">
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col md:flex-row md:items-center gap-5 md:gap-8 px-1 md:px-8 md:-mx-6 pb-24">
               {teams.map((t, i) => (
                 <TeamCard 
                   key={t.id} 
@@ -261,7 +264,7 @@ export default function InvestPage() {
           <div className="p-4 md:p-6 animate-fade-in pb-32 max-w-lg mx-auto">
             <section className="mb-12">
               <div className="text-[9px] md:text-[10px] font-black text-zinc-500 tracking-[0.4em] uppercase mb-2">District Asset</div>
-              <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase mb-8 leading-none break-words">{selectedTeam.name}</h1>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase mb-8 leading-none wrap-break-word">{selectedTeam.name}</h1>
               
               <div className="grid grid-cols-2 gap-4 mb-12">
                 <div className="bg-zinc-900/50 p-4 border border-zinc-800">
@@ -362,7 +365,8 @@ export default function InvestPage() {
                 min={1}
                 max={user.balance}
                 value={investAmount}
-                onChange={(e) => setInvestAmount(clampInvestAmount(e.target.value))}
+                onChange={(e) => setInvestAmount(clampInvestAmount(e.target.value, { enforceMax: false }))}
+                onBlur={() => setInvestAmount(clampInvestAmount(investAmount))}
                 className="w-28 bg-black border border-zinc-700 text-right py-2 px-3 text-sm font-black font-mono tracking-wider focus:outline-none focus:border-blue-600"
               />
             </div>
@@ -410,11 +414,11 @@ function TeamCard({ team, index, total, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className={`${bgColor} min-w-[280px] sm:min-w-[300px] max-w-[85vw] sm:max-w-[300px] h-[480px] sm:h-[520px] rounded-[30px] sm:rounded-[40px] p-8 sm:p-10 flex flex-col justify-between relative cursor-pointer transform transition-all duration-500 active:scale-95 group z-10 shadow-none`}
+      className={`${bgColor} w-full md:min-w-[280px] md:max-w-[300px] md:h-[520px] rounded-[24px] md:rounded-[40px] p-6 md:p-10 flex flex-col justify-between relative cursor-pointer transform transition-all duration-500 active:scale-[0.98] md:active:scale-95 group z-10 shadow-none`}
     >
       <div className="relative z-10">
         <div className="text-[9px] md:text-[10px] font-black text-white/50 tracking-[0.4em] uppercase mb-4">District {index + 1}</div>
-        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter uppercase leading-tight mb-6 break-words">{team.name}</h2>
+        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter uppercase leading-tight mb-6 wrap-break-word">{team.name}</h2>
         <div className="w-10 h-1 bg-white/20 mb-8 group-hover:w-20 transition-all duration-500"></div>
         
         {/* Real-time Stats on Card */}

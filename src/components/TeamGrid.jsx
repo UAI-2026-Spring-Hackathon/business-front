@@ -3,9 +3,9 @@ import React from 'react';
 export default function TeamGrid({ teams }) {
   return (
     <div className="p-base md:p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="font-['Inter'] text-2xl font-black uppercase tracking-tighter">TEAM PERFORMANCE</h2>
-        <div className="flex space-x-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <h2 className="font-['Inter'] text-xl sm:text-2xl font-black uppercase tracking-tighter">TEAM PERFORMANCE</h2>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-ku-red"></div>
             <span className="text-[10px] font-bold text-zinc-500 tracking-widest uppercase">KU TEAMS</span>
@@ -38,7 +38,7 @@ export default function TeamGrid({ teams }) {
                 <div className="text-[10px] font-black opacity-60 uppercase">
                   {team.society ? `${team.society} - DISTRICT ${String(index + 1).padStart(2, '0')}` : `DISTRICT ${String(index + 1).padStart(2, '0')}`}
                 </div>
-                <div className="text-xl font-black leading-tight mt-1 break-words">
+                <div className="text-xl font-black leading-tight mt-1 wrap-break-word">
                   {team.name || team.id}
                 </div>
                 {/* User mentioned society is just metadata, so maybe show it here if it's not the same as the main battle ID */}

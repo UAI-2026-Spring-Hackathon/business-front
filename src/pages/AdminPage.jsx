@@ -129,13 +129,15 @@ export default function AdminPage() {
 
   return (
     <Layout timeLeft={timeLeft} totalVolume={totalVolume}>
-      <div className="p-8 max-w-4xl mx-auto space-y-12 animate-fade-in">
-        <header className="flex justify-between items-end">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8 md:space-y-12 animate-fade-in">
+        <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
           <div>
-            <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none">Command Center</h1>
-            <p className="text-[10px] font-black text-zinc-600 tracking-[0.4em] uppercase mt-4 italic">Strategic Operations & Control</p>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase italic leading-none wrap-break-word">Command Center</h1>
+            <p className="text-[9px] md:text-[10px] font-black text-zinc-600 tracking-[0.25em] md:tracking-[0.4em] uppercase mt-3 md:mt-4 italic">
+              Strategic Operations & Control
+            </p>
           </div>
-          <div className="text-right space-y-1">
+          <div className="text-left md:text-right space-y-1">
             <div className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">SYSTEM STATUS</div>
             <div className={`text-xs font-black uppercase ${isOpen ? "text-green-500" : "text-red-500"}`}>
               ● {isOpen ? "INVESTMENT ACTIVE" : "INVESTMENT HALTED"}
@@ -149,9 +151,9 @@ export default function AdminPage() {
         </header>
 
         {msg && (
-          <div className="bg-zinc-900 border-l-4 border-blue-600 p-6 flex items-center space-x-4 animate-slide-up">
+          <div className="bg-zinc-900 border-l-4 border-blue-600 p-4 md:p-6 flex items-start md:items-center space-x-3 md:space-x-4 animate-slide-up">
             <span className="text-blue-500 font-black text-lg">!</span>
-            <span className="text-xs font-black uppercase tracking-widest text-zinc-300">{msg}</span>
+            <span className="text-[11px] md:text-xs font-black uppercase tracking-[0.08em] md:tracking-widest text-zinc-300 wrap-break-word">{msg}</span>
           </div>
         )}
 
@@ -222,7 +224,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <footer className="pt-12 border-t border-zinc-900 flex justify-between items-center text-zinc-700">
+        <footer className="pt-8 md:pt-12 border-t border-zinc-900 flex flex-col md:flex-row justify-between md:items-center gap-2 text-zinc-700">
           <div className="text-[9px] font-black uppercase tracking-widest">KU vs YU AI Hackathon © 2026</div>
           <div className="text-[9px] font-black uppercase tracking-widest">Strategic Ops v1.0</div>
         </footer>
