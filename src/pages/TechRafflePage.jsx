@@ -16,11 +16,11 @@ export default function TechRafflePage() {
   useEffect(() => {
     if (isDemo) {
       setParticipants([
-        { id: "user_team_01_01", name: "최규호", team_id: "team_01" },
-        { id: "user_team_01_02", name: "민한성", team_id: "team_01" },
-        { id: "user_team_02_01", name: "오지훈", team_id: "team_02" },
-        { id: "user_team_02_02", name: "송인보", team_id: "team_02" },
-        { id: "user_team_03_01", name: "김용주", team_id: "team_03" },
+        { id: "user_team_01_01", name: "최규호", team_id: "team_01", team_name: "그래그래" },
+        { id: "user_team_01_02", name: "민한성", team_id: "team_01", team_name: "그래그래" },
+        { id: "user_team_02_01", name: "오지훈", team_id: "team_02", team_name: "자컴즈" },
+        { id: "user_team_02_02", name: "송인보", team_id: "team_02", team_name: "자컴즈" },
+        { id: "user_team_03_01", name: "김용주", team_id: "team_03", team_name: "새벽 세 시" },
       ]);
       return;
     }
@@ -135,7 +135,7 @@ export default function TechRafflePage() {
                   {lastWinner.name}
                 </h2>
                 <div className="text-[10px] font-black text-zinc-500 tracking-widest uppercase mb-6">
-                  {lastWinner.team_id}
+                  {lastWinner.team_name || lastWinner.team_id}
                 </div>
                 {remainingCount > 0 && (
                   <button
@@ -205,7 +205,7 @@ export default function TechRafflePage() {
                       </span>
                       <span className="text-white">{w.name}</span>
                     </div>
-                    <span className="text-zinc-600 font-mono">{w.team_id}</span>
+                    <span className="text-zinc-600">{w.team_name || w.team_id}</span>
                   </div>
                 ))}
               </div>
@@ -250,7 +250,7 @@ export default function TechRafflePage() {
                   className="flex justify-between items-center text-[11px] font-bold"
                 >
                   <span className="text-zinc-300">{p.name}</span>
-                  <span className="text-zinc-600 font-mono">{p.team_id}</span>
+                  <span className="text-zinc-600">{p.team_name || p.team_id}</span>
                 </div>
               ))}
               {remainingPool.length === 0 && (

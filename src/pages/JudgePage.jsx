@@ -17,7 +17,16 @@ export default function JudgePage() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [teamSearch, setTeamSearch] = useState("");
 
+  // PIN-gated 인증 상태 — PIN은 컴포넌트 state에만 보관(URL/스토리지 미저장)
+  const [pin, setPin] = useState("");
+  const [pinInput, setPinInput] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authName, setAuthName] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
   useEffect(() => {
+    if (!authenticated) return;
     const q = query(collection(db, "Teams"), orderBy("name"));
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -25,7 +34,7 @@ export default function JudgePage() {
       setSelectedTeam(prev => (prev || (data.length > 0 ? data[0].id : "")));
     });
     return unsub;
-  }, []);
+  }, [authenticated]);
 
   if (!judgeId) {
     return (
@@ -37,6 +46,84 @@ export default function JudgePage() {
             Please use the secure link provided to authenticated judges only.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/judge/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ judge_id: judgeId, pin: pinInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.detail || "Authentication failed");
+        return;
+      }
+      setPin(pinInput);
+      setAuthName(data.name || "");
+      setAuthenticated(true);
+      setPinInput("");
+    } catch {
+      setAuthError("Server connection failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-[#0f0d13] flex items-center justify-center p-6 font-['Inter']">
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-md bg-zinc-950 border border-zinc-800 p-10 shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -ml-16 -mt-16"></div>
+          <div className="relative z-10">
+            <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Restricted Access</div>
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase italic mb-6">Judge Authentication</h1>
+
+            <div className="bg-zinc-900 border border-zinc-800 px-4 py-3 mb-6">
+              <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Judge ID</div>
+              <div className="text-xs font-black text-zinc-300 uppercase">{judgeId}</div>
+            </div>
+
+            <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">PIN</label>
+            <input
+              autoFocus
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value.trim())}
+              placeholder="Enter your secure PIN"
+              className="w-full bg-zinc-900 border border-zinc-800 text-white px-4 py-4 text-sm font-bold tracking-widest focus:outline-none focus:border-blue-600 mb-6"
+            />
+
+            {authError && (
+              <div className="mb-6 p-3 text-[11px] font-bold uppercase tracking-widest text-center bg-red-600/20 text-red-500 border border-red-600/50">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authLoading || pinInput.length < 6}
+              className="w-full bg-blue-600 hover:bg-transparent border-2 border-blue-600 text-white font-black py-4 uppercase text-xs tracking-[0.3em] transition-all duration-300 disabled:opacity-50"
+            >
+              {authLoading ? "Verifying..." : "Authenticate"}
+            </button>
+
+            <p className="mt-6 text-[10px] text-zinc-600 uppercase tracking-widest text-center">
+              PIN is held in memory only · Never persisted
+            </p>
+          </div>
+        </form>
       </div>
     );
   }
@@ -57,12 +144,19 @@ export default function JudgePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           judge_id: judgeId,
+          pin,
           team_id: selectedTeam,
           ...scores,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
+        // PIN 변조/만료 시 재인증 유도
+        if (res.status === 403) {
+          setAuthenticated(false);
+          setPin("");
+          setAuthError(data.detail || "Re-authentication required.");
+        }
         setStatus({ ok: false, message: data.detail || "오류가 발생했습니다." });
       } else {
         setStatus({ ok: true, message: `Evaluation complete! Total: ${data.total_score} / 50` });
@@ -107,8 +201,8 @@ export default function JudgePage() {
             <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase italic">Judge Console</h1>
           </div>
           <div className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-sm">
-            <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Authenticated ID</div>
-            <div className="text-xs font-black text-zinc-300 uppercase">{judgeId}</div>
+            <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Authenticated</div>
+            <div className="text-xs font-black text-zinc-300 uppercase">{authName ? `${authName} · ${judgeId}` : judgeId}</div>
           </div>
         </header>
 

@@ -92,6 +92,9 @@ export default function InvestPage() {
       const data = await res.json();
       if (res.ok) {
         setUser({ ...data, pin });
+      } else if (res.status === 429) {
+        const retry = res.headers.get("Retry-After") || "60";
+        alert(`TOO MANY ATTEMPTS — RETRY IN ${retry}s`);
       } else {
         alert(data.detail || "LOGIN FAILED");
       }
@@ -159,7 +162,12 @@ export default function InvestPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setStatus({ ok: false, message: data.detail || "ERROR" });
+        if (res.status === 429) {
+          const retry = res.headers.get("Retry-After") || "5";
+          setStatus({ ok: false, message: `RATE LIMIT — RETRY IN ${retry}s` });
+        } else {
+          setStatus({ ok: false, message: data.detail || "ERROR" });
+        }
       } else {
         setUser(prev => ({ ...prev, balance: data.remaining_balance }));
         setTeams(prev =>
