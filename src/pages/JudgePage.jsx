@@ -1,23 +1,24 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
+const PAGE_SHELL = "min-h-screen bg-[#0f0d13] flex items-center justify-center p-6 font-['Inter']";
 
 export default function JudgePage() {
   const [searchParams] = useSearchParams();
   const judgeId = searchParams.get("id") || "";
 
   const [teams, setTeams] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState("");
-  const [scores, setScores] = useState({ ai_moat: 0, bm_validity: 0, demo_completeness: 0 });
+  const [myScores, setMyScores] = useState({});
+  const [editingTeamId, setEditingTeamId] = useState(null);
+  const [finalScore, setFinalScore] = useState(0);
+  const [scoreInput, setScoreInput] = useState("0");
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [teamSearch, setTeamSearch] = useState("");
 
-  // PIN-gated 인증 상태 — PIN은 컴포넌트 state에만 보관(URL/스토리지 미저장)
   const [pin, setPin] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -29,25 +30,75 @@ export default function JudgePage() {
     if (!authenticated) return;
     const q = query(collection(db, "Teams"), orderBy("name"));
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setTeams(data);
-      setSelectedTeam(prev => (prev || (data.length > 0 ? data[0].id : "")));
     });
     return unsub;
   }, [authenticated]);
 
-  if (!judgeId) {
-    return (
-      <div className="min-h-screen bg-[#0f0d13] flex items-center justify-center p-6 font-['Inter']">
-        <div className="w-full max-w-md bg-zinc-950 border border-red-900/50 p-12 text-center shadow-2xl">
-          <div className="text-6xl mb-6">🚫</div>
-          <h2 className="text-red-500 font-black text-xl uppercase tracking-tighter mb-4">Unauthorized Access</h2>
-          <p className="text-zinc-500 text-xs font-bold leading-relaxed uppercase tracking-widest">
-            Please use the secure link provided to authenticated judges only.
-          </p>
-        </div>
-      </div>
+  useEffect(() => {
+    if (!authenticated || !judgeId) return;
+    const q = query(collection(db, "Judge_Scores"), where("judge_id", "==", judgeId));
+    const unsub = onSnapshot(q, (snap) => {
+      const map = {};
+      snap.docs.forEach((doc) => {
+        const d = doc.data();
+        if (d.team_id != null) {
+          map[d.team_id] = d.total ?? 0;
+        }
+      });
+      setMyScores(map);
+    });
+    return unsub;
+  }, [authenticated, judgeId]);
+
+  const editingTeam = useMemo(
+    () => teams.find((t) => t.id === editingTeamId),
+    [teams, editingTeamId]
+  );
+
+  const filteredTeams = useMemo(() => {
+    const q = teamSearch.trim().toLowerCase();
+    if (!q) return teams;
+    return teams.filter(
+      (t) =>
+        (t.name || "").toLowerCase().includes(q) ||
+        (t.id || "").toLowerCase().includes(q) ||
+        (t.society || "").toLowerCase().includes(q)
     );
+  }, [teams, teamSearch]);
+
+  const scoredCount = useMemo(
+    () => teams.filter((t) => myScores[t.id] != null).length,
+    [teams, myScores]
+  );
+
+  function clampScore(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.min(50, Math.max(0, Math.round(n)));
+  }
+
+  function handleScoreInputChange(raw) {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length > 2) return;
+    setScoreInput(digits);
+    if (digits === "") return;
+    const n = Number(digits);
+    if (n <= 50) setFinalScore(n);
+  }
+
+  function openScoreForm(teamId) {
+    setStatus(null);
+    setEditingTeamId(teamId);
+    const initial = myScores[teamId] ?? 0;
+    setFinalScore(initial);
+    setScoreInput(String(initial));
+  }
+
+  function closeScoreForm() {
+    setEditingTeamId(null);
+    setStatus(null);
   }
 
   async function handleLogin(e) {
@@ -76,65 +127,9 @@ export default function JudgePage() {
     }
   }
 
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-[#0f0d13] flex items-center justify-center p-6 font-['Inter']">
-        <form
-          onSubmit={handleLogin}
-          className="w-full max-w-md bg-zinc-950 border border-zinc-800 p-10 shadow-2xl relative overflow-hidden"
-        >
-          <div className="absolute top-0 left-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -ml-16 -mt-16"></div>
-          <div className="relative z-10">
-            <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Restricted Access</div>
-            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase italic mb-6">Judge Authentication</h1>
-
-            <div className="bg-zinc-900 border border-zinc-800 px-4 py-3 mb-6">
-              <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Judge ID</div>
-              <div className="text-xs font-black text-zinc-300 uppercase">{judgeId}</div>
-            </div>
-
-            <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">PIN</label>
-            <input
-              autoFocus
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value.trim())}
-              placeholder="Enter your secure PIN"
-              className="w-full bg-zinc-900 border border-zinc-800 text-white px-4 py-4 text-sm font-bold tracking-widest focus:outline-none focus:border-blue-600 mb-6"
-            />
-
-            {authError && (
-              <div className="mb-6 p-3 text-[11px] font-bold uppercase tracking-widest text-center bg-red-600/20 text-red-500 border border-red-600/50">
-                {authError}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={authLoading || pinInput.length < 6}
-              className="w-full bg-blue-600 hover:bg-transparent border-2 border-blue-600 text-white font-black py-4 uppercase text-xs tracking-[0.3em] transition-all duration-300 disabled:opacity-50"
-            >
-              {authLoading ? "Verifying..." : "Authenticate"}
-            </button>
-
-            <p className="mt-6 text-[10px] text-zinc-600 uppercase tracking-widest text-center">
-              PIN is held in memory only · Never persisted
-            </p>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  function setScore(field, max, value) {
-    const v = Math.min(max, Math.max(0, Number(value)));
-    setScores((prev) => ({ ...prev, [field]: v }));
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!editingTeamId) return;
     setLoading(true);
     setStatus(null);
 
@@ -145,21 +140,22 @@ export default function JudgePage() {
         body: JSON.stringify({
           judge_id: judgeId,
           pin,
-          team_id: selectedTeam,
-          ...scores,
+          team_id: editingTeamId,
+          total_score: Number(finalScore),
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        // PIN 변조/만료 시 재인증 유도
         if (res.status === 403) {
           setAuthenticated(false);
           setPin("");
           setAuthError(data.detail || "Re-authentication required.");
+          closeScoreForm();
         }
         setStatus({ ok: false, message: data.detail || "오류가 발생했습니다." });
       } else {
-        setStatus({ ok: true, message: `Evaluation complete! Total: ${data.total_score} / 50` });
+        setStatus({ ok: true, message: `Saved: ${data.total_score} / 50` });
+        setTimeout(() => closeScoreForm(), 600);
       }
     } catch {
       setStatus({ ok: false, message: "Server connection failed" });
@@ -168,196 +164,194 @@ export default function JudgePage() {
     }
   }
 
-  const total = scores.ai_moat + scores.bm_validity + scores.demo_completeness;
-  const selectedTeamObj = useMemo(
-    () => teams.find((t) => t.id === selectedTeam),
-    [teams, selectedTeam]
-  );
-  const filteredTeams = useMemo(() => {
-    const q = teamSearch.trim().toLowerCase();
-    if (!q) return teams;
-    return teams.filter(
-      (t) =>
-        (t.name || "").toLowerCase().includes(q) ||
-        (t.id || "").toLowerCase().includes(q) ||
-        (t.society || "").toLowerCase().includes(q)
+  if (!judgeId) {
+    return (
+      <div className={PAGE_SHELL}>
+        <div className="w-full max-w-md bg-zinc-950 border border-red-900/50 p-12 text-center shadow-2xl">
+          <div className="text-6xl mb-6">🚫</div>
+          <h2 className="text-red-500 font-black text-xl uppercase tracking-tighter mb-4">Unauthorized Access</h2>
+          <p className="text-zinc-500 text-xs font-bold leading-relaxed uppercase tracking-widest">
+            Please use the secure link provided to authenticated judges only.
+          </p>
+        </div>
+      </div>
     );
-  }, [teams, teamSearch]);
+  }
 
-  function handleSelectTeam(teamId) {
-    setSelectedTeam(teamId);
-    setIsTeamModalOpen(false);
-    setTeamSearch("");
+  if (!authenticated) {
+    return (
+      <div className={PAGE_SHELL}>
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-md bg-zinc-950 border border-zinc-800 p-10 shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -ml-16 -mt-16" />
+          <div className="relative z-10">
+            <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Restricted Access</div>
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase italic mb-2">Judge Authentication</h1>
+            <p className="text-zinc-500 text-xs mb-6 uppercase tracking-widest">{judgeId}</p>
+            {authError && (
+              <p className="text-red-500 text-xs font-bold mb-4 uppercase">{authError}</p>
+            )}
+            <input
+              type="password"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="PIN"
+              className="w-full bg-zinc-900 border border-zinc-800 px-4 py-4 text-center text-lg font-mono tracking-widest text-white mb-4 focus:outline-none focus:border-blue-600"
+              required
+            />
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-4 uppercase tracking-widest text-xs"
+            >
+              {authLoading ? "Verifying..." : "Authenticate"}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0d13] flex flex-col items-center justify-center p-6 font-['Inter']">
-      <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 p-8 md:p-12 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -ml-16 -mt-16"></div>
-        
-        <header className="relative z-10 mb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+    <div className={PAGE_SHELL}>
+      <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 p-8 md:p-10 shadow-2xl relative overflow-hidden">
+        <header className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Internal Assessment</div>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase italic">Judge Console</h1>
+            <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-2">Final Score Entry</div>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic">Judge Console</h1>
+            <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-2">50-point scale · Re-submit overwrites</p>
           </div>
-          <div className="bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-sm">
-            <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Authenticated</div>
-            <div className="text-xs font-black text-zinc-300 uppercase">{authName ? `${authName} · ${judgeId}` : judgeId}</div>
+          <div className="bg-zinc-900 border border-zinc-800 px-4 py-2">
+            <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Progress</div>
+            <div className="text-xs font-black text-zinc-300 uppercase">
+              {scoredCount} / {teams.length} teams
+            </div>
+            <div className="text-[9px] text-zinc-500 mt-1">{authName ? `${authName} · ` : ""}{judgeId}</div>
           </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="relative z-10 space-y-10">
-          <div>
-            <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3">Target Entity for Evaluation</label>
-            <button
-              type="button"
-              onClick={() => setIsTeamModalOpen(true)}
-              className="w-full bg-zinc-900 border border-zinc-800 text-white px-4 py-4 text-left text-sm font-bold focus:outline-none focus:border-blue-600 transition-colors hover:border-zinc-700"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-white truncate">
-                    {selectedTeamObj ? `${selectedTeamObj.name || selectedTeamObj.id}` : "Select a team"}
-                  </div>
-                  {selectedTeamObj && (
-                    <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1">
-                      {selectedTeamObj.id} · {selectedTeamObj.society || "?"}
+        <input
+          value={teamSearch}
+          onChange={(e) => setTeamSearch(e.target.value)}
+          placeholder="Search teams..."
+          className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm text-white mb-4 focus:outline-none focus:border-blue-600"
+        />
+
+        <ul className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+          {filteredTeams.map((team) => {
+            const scored = myScores[team.id] != null;
+            const scoreVal = myScores[team.id];
+            return (
+              <li key={team.id}>
+                <button
+                  type="button"
+                  onClick={() => openScoreForm(team.id)}
+                  className="w-full flex items-center justify-between gap-3 bg-zinc-900 border border-zinc-800 hover:border-blue-600/50 px-4 py-4 text-left transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-black text-white uppercase tracking-tight truncate">{team.name}</div>
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">
+                      {team.society} · {team.id}
                     </div>
-                  )}
-                </div>
-                <span className="material-symbols-outlined text-zinc-400">expand_more</span>
-              </div>
-            </button>
-          </div>
-
-          <div className="space-y-8">
-            <ScoreInput
-              label="AI Moat (Technical Advantage)"
-              max={20}
-              value={scores.ai_moat}
-              onChange={(v) => setScore("ai_moat", 20, v)}
-            />
-            <ScoreInput
-              label="BM Validity (Business Logic)"
-              max={15}
-              value={scores.bm_validity}
-              onChange={(v) => setScore("bm_validity", 15, v)}
-            />
-            <ScoreInput
-              label="Demo Completeness (Execution)"
-              max={15}
-              value={scores.demo_completeness}
-              onChange={(v) => setScore("demo_completeness", 15, v)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between py-6 border-y border-zinc-900">
-            <div className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">Aggregated Performance Score</div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black text-white tracking-tighter">{total}</span>
-              <span className="text-lg font-black text-zinc-700">/ 50</span>
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-transparent border-2 border-blue-600 text-white font-black py-5 uppercase text-xs tracking-[0.3em] transition-all duration-300 disabled:opacity-50"
-          >
-            {loading ? "Transmitting..." : "Submit Final Score"}
-          </button>
-        </form>
-
-        {status && (
-          <div className={`relative z-10 mt-8 p-4 text-[11px] font-bold uppercase tracking-widest text-center ${status.ok ? 'bg-green-600/20 text-green-500 border border-green-600/50' : 'bg-red-600/20 text-red-500 border border-red-600/50'}`}>
-            {status.message}
-          </div>
-        )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {scored ? (
+                      <>
+                        <div className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Scored</div>
+                        <div className="text-lg font-black text-white tabular-nums">{scoreVal} / 50</div>
+                      </>
+                    ) : (
+                      <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Tap to score</div>
+                    )}
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
-      {isTeamModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 shadow-2xl">
-            <div className="p-5 border-b border-zinc-900 flex items-center justify-between">
+      {editingTeamId && editingTeam && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4">
+          <form
+            onSubmit={handleSubmit}
+            className="w-full max-w-md bg-zinc-950 border border-zinc-800 p-8 shadow-2xl animate-slide-up"
+          >
+            <div className="flex items-start justify-between gap-4 mb-6">
               <div>
-                <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Target Entity</div>
-                <h2 className="text-lg font-black text-white tracking-tight">Select Team</h2>
+                <div className="text-[10px] font-black text-blue-500 tracking-[0.4em] uppercase mb-1">Final Score</div>
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">{editingTeam.name}</h2>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">{editingTeam.society} · {editingTeam.id}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsTeamModalOpen(false);
-                  setTeamSearch("");
-                }}
-                className="w-9 h-9 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
-              >
-                ✕
+              <button type="button" onClick={closeScoreForm} className="text-zinc-500 hover:text-white text-xs font-bold uppercase">
+                Close
               </button>
             </div>
 
-            <div className="p-5 border-b border-zinc-900">
+            <div className="mb-6">
+              <div className="flex items-end justify-between gap-4 mb-3">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Score (0–50)</span>
+                <div className="flex items-baseline gap-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="off"
+                    value={scoreInput}
+                    onChange={(e) => handleScoreInputChange(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => {
+                      const clamped = clampScore(scoreInput === "" ? 0 : scoreInput);
+                      setFinalScore(clamped);
+                      setScoreInput(String(clamped));
+                    }}
+                    className="w-20 bg-zinc-900 border border-zinc-700 text-right text-3xl font-black text-white tabular-nums px-2 py-1 focus:outline-none focus:border-blue-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-sm font-bold text-zinc-500">/ 50</span>
+                </div>
+              </div>
               <input
-                autoFocus
-                value={teamSearch}
-                onChange={(e) => setTeamSearch(e.target.value)}
-                placeholder="Search by name / id / society"
-                className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-600"
+                type="range"
+                min={0}
+                max={50}
+                step={1}
+                value={finalScore}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setFinalScore(v);
+                  setScoreInput(String(v));
+                }}
+                className="w-full accent-blue-600"
               />
+              <div className="flex justify-between text-[9px] text-zinc-600 font-bold uppercase mt-1">
+                <span>0</span>
+                <span>50</span>
+              </div>
             </div>
 
-            <div className="max-h-[380px] overflow-y-auto">
-              {filteredTeams.length === 0 ? (
-                <div className="p-10 text-center text-zinc-500 text-sm">No teams found.</div>
-              ) : (
-                filteredTeams.map((team) => {
-                  const isSelected = team.id === selectedTeam;
-                  return (
-                    <button
-                      key={team.id}
-                      type="button"
-                      onClick={() => handleSelectTeam(team.id)}
-                      className={`w-full text-left p-4 border-b border-zinc-900 hover:bg-zinc-900/70 transition-colors ${
-                        isSelected ? "bg-blue-600/10" : ""
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="text-white font-bold truncate">{team.name || team.id}</div>
-                          <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1">
-                            {team.id} · {team.society || "?"}
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Selected</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
+            {status && (
+              <p className={`text-xs font-bold mb-4 uppercase ${status.ok ? "text-emerald-500" : "text-red-500"}`}>
+                {status.message}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-4 uppercase tracking-widest text-xs"
+            >
+              {loading ? "Saving..." : myScores[editingTeamId] != null ? "Update Score" : "Submit Score"}
+            </button>
+          </form>
         </div>
       )}
-    </div>
-  );
-}
 
-function ScoreInput({ label, max, value, onChange }) {
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{label}</span>
-        <span className="text-sm font-black text-blue-500">{value} <span className="text-zinc-700 mx-1">/</span> {max}</span>
-      </div>
-      <input
-        type="range"
-        min="0"
-        max={max}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-blue-600"
-      />
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes slide-up { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-slide-up { animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+      ` }} />
     </div>
   );
 }
