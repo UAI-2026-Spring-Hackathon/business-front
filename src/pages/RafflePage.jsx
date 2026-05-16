@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { doc, onSnapshot } from "firebase/firestore";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase/config";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
 
 export default function RafflePage() {
   const [searchParams] = useSearchParams();
@@ -12,24 +14,61 @@ export default function RafflePage() {
   const [winners, setWinners] = useState([]);
   const [lastWinner, setLastWinner] = useState(null);
   const [rollingUser, setRollingUser] = useState("");
+  const [userNames, setUserNames] = useState({});
+
+  const displayName = (ticketOrId) => {
+    if (typeof ticketOrId === "object" && ticketOrId !== null) {
+      const id = ticketOrId.investor_id;
+      const fromUsers = id ? userNames[id] : null;
+      if (fromUsers) return fromUsers;
+      const emb = ticketOrId.investor_name;
+      if (emb && id && emb !== id) return emb;
+      return emb || id || "";
+    }
+    return userNames[ticketOrId] || ticketOrId;
+  };
+
+  useEffect(() => {
+    const unsubUsers = onSnapshot(collection(db, "Users"), (snap) => {
+      const map = {};
+      snap.docs.forEach((userDoc) => {
+        map[userDoc.id] = userDoc.data().name || userDoc.id;
+      });
+      setUserNames(map);
+    });
+    return unsubUsers;
+  }, []);
 
   useEffect(() => {
     if (isDemo) {
       setSettlement({
         raffle_tickets: [
-          { investor_id: "VIP_INVESTOR_01", tickets: 120 },
-          { investor_id: "KU_STUDENT_99", tickets: 50 },
-          { investor_id: "YU_MASTER_77", tickets: 80 },
-          { investor_id: "UPSTAGE_FAN_01", tickets: 30 },
-          { investor_id: "ALPHA_TESTER", tickets: 10 },
+          { investor_id: "VIP_INVESTOR_01", investor_name: "VIP Investor", tickets: 120 },
+          { investor_id: "KU_STUDENT_99", investor_name: "KU Student", tickets: 50 },
+          { investor_id: "YU_MASTER_77", investor_name: "YU Master", tickets: 80 },
+          { investor_id: "UPSTAGE_FAN_01", investor_name: "Upstage Fan", tickets: 30 },
+          { investor_id: "ALPHA_TESTER", investor_name: "Alpha Tester", tickets: 10 },
         ]
       });
       return;
     }
-    const unsub = onSnapshot(doc(db, "Settlement_Results", "latest"), (snap) => {
-      if (snap.exists()) {
-        setSettlement(snap.data());
+    const unsub = onSnapshot(doc(db, "Settlement_Results", "latest"), async (snap) => {
+      if (!snap.exists()) {
+        setSettlement(null);
+        return;
       }
+      const data = snap.data();
+      let tickets = data.raffle_tickets || [];
+      try {
+        const res = await fetch(`${API_BASE}/settlement/raffle-tickets`);
+        if (res.ok) {
+          const j = await res.json();
+          if (Array.isArray(j.raffle_tickets)) tickets = j.raffle_tickets;
+        }
+      } catch {
+        /* 폴백: Firestore 스냅샷 원본 */
+      }
+      setSettlement({ ...data, raffle_tickets: tickets });
     });
     return unsub;
   }, []);
@@ -63,7 +102,7 @@ export default function RafflePage() {
     let counter = 0;
     const interval = setInterval(() => {
       const sample = remainingTickets[Math.floor(Math.random() * remainingTickets.length)];
-      setRollingUser(sample?.investor_id || "");
+      setRollingUser(displayName(sample) || "");
       counter++;
 
       if (counter > 30) {
@@ -72,6 +111,7 @@ export default function RafflePage() {
         const ticketEntry = remainingTickets.find((t) => t.investor_id === finalWinnerId);
         const winnerRecord = {
           investor_id: finalWinnerId,
+          investor_name: ticketEntry?.investor_name || userNames[finalWinnerId] || finalWinnerId,
           tickets: ticketEntry?.tickets || 0,
         };
         setLastWinner(winnerRecord);
@@ -128,7 +168,7 @@ export default function RafflePage() {
                <div className="relative z-10 animate-slide-up">
                  <div className="text-[10px] font-black text-green-500 tracking-[0.5em] uppercase mb-6">★ DRAW COMPLETE ★</div>
                  <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter uppercase italic leading-tight mb-8 drop-shadow-[0_0_40px_rgba(34,197,94,0.3)] break-all max-w-full px-4">
-                   {lastWinner.investor_id}
+                   {displayName(lastWinner)}
                  </h2>
                  <div className="text-[10px] font-black text-zinc-600 tracking-widest uppercase mb-6">Validated Winner Hash: 0x{Math.random().toString(16).slice(2, 10)}</div>
                  {weightedPool.length > 0 && (
@@ -197,7 +237,7 @@ export default function RafflePage() {
                       <span className="text-zinc-600 font-mono italic">
                         #{String(idx + 1).padStart(2, "0")}
                       </span>
-                      <span className="text-white">{w.investor_id}</span>
+                      <span className="text-white">{displayName(w)}</span>
                     </div>
                     <span className="text-zinc-600 font-mono">{w.tickets} TX</span>
                   </div>
@@ -232,7 +272,7 @@ export default function RafflePage() {
             <div className="space-y-4">
               {remainingTickets.map((t) => (
                 <div key={t.investor_id} className="flex justify-between items-center text-[11px] font-bold">
-                  <span className="text-zinc-300">{t.investor_id}</span>
+                  <span className="text-zinc-300">{displayName(t)}</span>
                   <div className="flex items-center space-x-2">
                     <span className="text-zinc-600 font-mono">{t.tickets} TX</span>
                     <div className="w-24 h-1 bg-zinc-800 rounded-full overflow-hidden">
